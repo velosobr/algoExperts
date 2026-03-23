@@ -1,0 +1,530 @@
+VELOCODE · ALGORITHMS & DATA STRUCTURES
+Capítulo 2
+ARRAYS
+Static · Dynamic · Complexidade · 80/20 FAANG
+A estrutura de dados que aparece em 70% das entrevistas — teoria profunda, nenhum enrolamento.
+
+
+
+O que é um Array de Verdade
+Teoria da memória que toda entrevista pressupõe que você sabe
+Arrays são a estrutura de dados mais antiga, mais usada, e a mais mal compreendida em profundidade. Todo dev usa. Poucos sabem o que acontece embaixo.
+
+A definição correta: um array é um bloco contíguo de memória onde cada elemento ocupa o mesmo número de bytes, e o endereço de qualquer elemento é calculável em tempo constante. Essa última parte é o que faz tudo fazer sentido.
+
+A Matemática do Acesso O(1)
+Por que acessar arr[i] é sempre O(1), independente do tamanho do array? Não é magia — é aritmética.
+
+Se você sabe onde o array começa na memória (o endereço base), e sabe quantos bytes cada elemento ocupa (o stride), então:
+
+address(arr[i])  =  base_address  +  (i  ×  element_size)
+Exemplo: arr começa em 0x1000, cada int tem 4 bytes, arr[5] está em 0x1000 + (5 × 4) = 0x1014
+
+A consequência direta: não importa se o array tem 10 ou 10 milhões de elementos. A CPU executa exatamente uma operação de cálculo de endereço e uma leitura de memória. Isso é O(1) por definição — o tempo não cresce com o input.
+
+A analogia que fixa: imagine um estacionamento numerado onde cada vaga tem o mesmo tamanho. Para chegar na vaga 342, você não percorre as 341 anteriores — você calcula diretamente (entrada + 342 × largura_da_vaga) e vai direto. Arrays são exatamente isso na memória.
+
+Por que Contiguidade Importa
+Quando o entrevistador pergunta por que arrays são eficientes, a resposta mais profunda não é 'acesso O(1)' — é cache locality.
+
+Processadores modernos não leem um byte da memória por vez. Eles leem blocos (cache lines, tipicamente 64 bytes). Quando você acessa arr[0], a CPU automaticamente carrega arr[0] até arr[15] (para inteiros de 4 bytes) no cache L1.
+
+A consequência: iterar um array sequencialmente é muito mais rápido na prática do que o Big O sugere, porque os elementos subsequentes já estão no cache. Já uma LinkedList, onde cada nó pode estar em qualquer lugar da memória, causa cache miss a cada step. Por isso arrays ganham de LinkedLists mesmo em traversal simples, apesar de ambos serem O(n).
+💡  Para a entrevista
+Se o entrevistador perguntar 'qual a diferença de performance entre arrays e linked lists para traversal, se ambos são O(n)?', a resposta é cache locality. Arrays são ordens de magnitude mais rápidos na prática por causa de como a hierarquia de cache funciona. Isso diferencia alguém que memorizou Big O de alguém que entende o hardware.
+
+
+Static vs Dynamic Arrays
+A diferença que explica por que ArrayList existe
+Static Array
+Um static array tem tamanho fixo definido em tempo de compilação ou de alocação. O OS reserva exatamente aquele bloco contíguo de memória — nem mais, nem menos.
+
+Em Kotlin: IntArray(n) aloca estaticamente. Você passa o tamanho e ele é imutável.
+
+O trade-off fundamental: você troca flexibilidade por garantia. O compilador sabe exatamente quanto espaço reservar. Zero overhead de gerenciamento. Zero realocação. Mas se você subestimou o tamanho, está preso.
+kotlin
+// Static array — tamanho fixo, alocação na stack ou heap dependendo do escopo
+val arr = IntArray(5)        // [0, 0, 0, 0, 0] — 5 × 4 bytes = 20 bytes contíguos
+arr[0] = 42                  // O(1) — cálculo direto de endereço
+arr[5] = 1                   // ArrayIndexOutOfBoundsException — sem realocação automática
+
+
+// Em linguagens de baixo nível (C, para entender o conceito)
+// int arr[5];               // reserva 20 bytes na stack
+// arr[10] = 1;              // undefined behavior — você está escrevendo em memória alheia
+
+
+
+
+Dynamic Array (ArrayList / MutableList)
+Um dynamic array começa como um static array interno, mas tem a capacidade de crescer quando necessário. A implementação canônica usa uma estratégia específica que a maioria dos devs não conhece.
+
+Como o Crescimento Funciona por Dentro
+Quando você faz add() num ArrayList cheio, ele não adiciona um espaço. Ele:
+
+Aloca um novo array com capacidade maior (tipicamente 2×)
+Copia todos os elementos para o novo array — O(n)
+Descarta o array antigo
+Adiciona o novo elemento
+
+Esse resize acontece raramente, mas quando acontece, custa O(n). Por isso o custo de add() não é O(1) puro — é O(1) amortizado.
+
+Amortização: a Matemática da Raridade
+Amortizado não significa médio — significa que o custo total de n operações dividido por n tende a O(1) à medida que n cresce.
+
+Pense assim com fator de dobramento 2×:
+
+Capacidade antes
+Após resize
+Custo do resize
+Próximos adds baratos
+1
+2
+O(1)
+1 barato
+2
+4
+O(2)
+2 baratos
+4
+8
+O(4)
+4 baratos
+8
+16
+O(8)
+8 baratos
+n
+2n
+O(n)
+n baratos
+
+
+Para inserir n elementos, o custo total de todos os resizes é 1 + 2 + 4 + ... + n = 2n − 1. Dividido por n operações = aproximadamente 2, que é O(1). Isso é amortização.
+
+A analogia da viagem de carro: você faz 100 viagens curtas (baratas). Uma vez a cada mês faz uma manutenção (cara). O custo médio por viagem ainda é baixo. O custo da manutenção é 'amortizado' pelas 100 viagens que ela viabilizou.
+⚠️  Cilada na entrevista
+Se o entrevistador perguntar 'qual a complexidade de add() num ArrayList?', a resposta errada é 'O(1)'. A resposta certa é 'O(1) amortizado, mas O(n) no pior caso quando ocorre resize'. Se você conseguir explicar amortização em 30 segundos, você se destaca automaticamente.
+
+
+Static vs Dynamic: Quando Usar Cada Um
+Critério
+Static Array
+Dynamic Array
+Tamanho conhecido?
+✓ Ideal — zero overhead
+Funciona, mas desperdiça memória se superestimar
+Tamanho varia?
+✗ Impossível crescer
+✓ Ideal — cresce automaticamente
+Performance crítica?
+✓ Melhor — sem realocação possível
+Risco de pausa no resize em sistemas real-time
+Memória limitada?
+✓ Uso exato, sem desperdício
+Pode ter até 2× espaço não usado após resize
+Acesso aleatório?
+✓ O(1) igual para ambos
+✓ O(1) igual para ambos
+Insert no meio?
+Não suportado (tamanho fixo)
+O(n) — shift de elementos
+
+
+Big O de Arrays: A Tabela Completa com o Porquê
+Não basta saber o número — você precisa explicar de onde ele vem
+Decorar a tabela de complexidades é o mínimo. O entrevistador vai perguntar 'por que é O(n)?' Você precisa ter a resposta na ponta da língua com a justificativa.
+
+Operação
+Tempo
+Espaço
+Porquê
+LEITURA
+Read by index  arr[i]
+O(1)
+O(1)
+Cálculo direto: base + i × stride. Uma operação aritmética.
+Search (unsorted)
+O(n)
+O(1)
+Sem garantia de ordem. Precisa visitar cada elemento no pior caso.
+Search (sorted, binary)
+O(log n)
+O(1)
+Descarta metade dos elementos a cada comparação. log₂(n) steps.
+Find min/max (unsorted)
+O(n)
+O(1)
+Sem índice auxiliar, deve comparar todos os elementos uma vez.
+Find min/max (sorted)
+O(1)
+O(1)
+Está na posição 0 ou n-1 por definição.
+INSERÇÃO
+Insert at end (static, cheio)
+O(n)
+O(n)
+Precisa alocar novo array e copiar todos os n elementos.
+Insert at end (dynamic, sem resize)
+O(1)
+O(1)
+Posição livre disponível. Incrementa o contador de tamanho.
+Insert at end (dynamic, amortizado)
+O(1) amort.
+O(1)
+Resize é O(n) mas ocorre com frequência 1/n. Custo médio = O(1).
+Insert at beginning
+O(n)
+O(1)
+Shift de todos os n elementos uma posição à direita.
+Insert at index i
+O(n)
+O(1)
+Shift de n-i elementos. Pior caso (i=0): shift de n elementos.
+REMOÇÃO
+Remove from end
+O(1)
+O(1)
+Apenas decrementa o tamanho lógico. Nenhum shift necessário.
+Remove from beginning
+O(n)
+O(1)
+Shift de todos os n-1 elementos uma posição à esquerda.
+Remove at index i
+O(n)
+O(1)
+Shift de n-i-1 elementos. Mesmo raciocínio da inserção.
+OPERAÇÕES DERIVADAS
+Traversal / iteration
+O(n)
+O(1)
+Visita cada elemento exatamente uma vez.
+Reverse (in-place)
+O(n)
+O(1)
+Troca n/2 pares. Sem array auxiliar. Two pointers.
+Reverse (new array)
+O(n)
+O(n)
+Cria array de tamanho n e copia em ordem inversa.
+Sort (comparison-based)
+O(n log n)
+O(1)–O(n)
+Limite teórico provado para sort por comparação. Varia com o algo.
+Copy (shallow)
+O(n)
+O(n)
+Cria novo bloco de memória e copia referências/valores.
+Concatenate two arrays
+O(n + m)
+O(n + m)
+Cria array de tamanho n+m e copia ambos. Proporcional ao total.
+
+
+🔑  O padrão que une tudo
+A regra mental para derivar qualquer complexidade de array: se a operação quebra a contiguidade (insert/delete no meio), você precisa de shift — O(n). Se a operação usa a contiguidade (acesso por índice, end operations), é O(1). Se você precisa visitar elementos sem saber onde está o alvo, é O(n). Se o array está ordenado e você pode descartar metade, é O(log n).
+
+
+Por que Insert/Delete no Meio É O(n)
+Este é um dos conceitos mais importantes para entrevistas porque é contraintuitivo. Muitos devs assumem que inserir num índice específico é O(1) — afinal, você sabe exatamente onde está.
+
+O problema: arrays são contíguos. Para manter a propriedade de contiguidade após uma inserção no meio, você precisa abrir espaço deslocando todos os elementos à direita do índice de inserção.
+
+Inserir X na posição 2 de [A, B, C, D, E]
+Antes:  [ A ][ B ][ C ][ D ][ E ][   ]
+Passo 1: mover E para posição 5  →  [ A ][ B ][ C ][ D ][   ][ E ]
+Passo 2: mover D para posição 4  →  [ A ][ B ][ C ][   ][ D ][ E ]
+Passo 3: mover C para posição 3  →  [ A ][ B ][   ][ C ][ D ][ E ]
+Depois: [ A ][ B ][ X ][ C ][ D ][ E ]  ← 3 shifts para n=6. Pior caso: n shifts.
+
+O shift deve acontecer da direita para a esquerda (do fim para o meio) para não sobrescrever dados. Se você fosse da esquerda para a direita, sobrescreveria C antes de mover B, perdendo C.
+
+A lição para entrevistas: sempre que você inserir ou remover de um array/lista no meio de um loop, está potencialmente fazendo O(n²) sem perceber — O(n) pelo loop × O(n) pelo shift em cada iteração.
+⚠️  Armadilha clássica O(n²) disfarçada
+Se você remove elementos de uma lista enquanto itera ela (com remove() dentro de um for loop), cada remoção é O(n) e o loop é O(n), resultando em O(n²). A solução é coletar índices numa passagem, ou usar two pointers para compactar in-place. Pergunta frequente em entrevistas.
+
+
+Os Padrões 80/20 para FAANG
+5 padrões que cobrem ~90% dos problemas de array em entrevistas
+Não existe 'resolver qualquer problema de array'. Existe reconhecer padrões e aplicar técnicas conhecidas. Os problemas mudam de roupa, mas os esqueletos são os mesmos.
+
+O 80/20 real de arrays: dominar esses 5 padrões te coloca em condição de resolver a grande maioria dos problemas de array em entrevistas de FAANG, mesmo os que você nunca viu.
+
+PADRÃO 1 DE 5
+
+Two Pointers
+Dois ponteiros que percorrem o array em direções ou velocidades diferentes. Elimina o segundo loop de soluções O(n²), reduzindo para O(n).
+
+Quando reconhecer: array ordenado, pares que somam a um target, palíndromo, remover duplicatas, mover elementos para extremidade. Qualquer problema onde você precisa de dois elementos simultaneamente.
+
+Variante
+Quando usar
+Opposite endsleft=0, right=n-1
+Array sorted, busca de par com soma/produto alvo, verificar palíndromo
+Same directionslow/fast pointers
+Remover duplicatas in-place, detectar ciclos, compactar array
+Dois arrays separadosi e j independentes
+Merge de dois arrays ordenados, intersection, difference
+
+
+Problema canônico — Two Sum II (sorted): dado array ordenado, encontre par que soma a target.
+kotlin
+// Two Sum II — Array is sorted
+// Brute force: O(n²) — dois loops aninhados
+// Two Pointers: O(n) — um loop, dois ponteiros opostos
+
+
+fun twoSumSorted(numbers: IntArray, target: Int): IntArray {
+    var left = 0
+    var right = numbers.lastIndex
+
+
+    while (left < right) {
+        val sum = numbers[left] + numbers[right]
+        when {
+            sum == target -> return intArrayOf(left + 1, right + 1)
+            sum < target  -> left++   // precisamos de valor maior, move esquerda
+            else          -> right--  // precisamos de valor menor, move direita
+        }
+    }
+    return intArrayOf()
+}
+
+
+// Por que funciona: array ordenado garante que mover left aumenta a soma
+// e mover right diminui. Assim eliminamos combinações impossíveis a cada step.
+// Complexidade: O(n) tempo, O(1) espaço
+
+
+
+Problema canônico — Remove Duplicates In-Place: compactar array sem memória extra.
+kotlin
+// Dois ponteiros no mesmo sentido: slow aponta onde escrever, fast lê
+fun removeDuplicates(nums: IntArray): Int {
+    if (nums.isEmpty()) return 0
+    var slow = 0  // próxima posição para escrever um valor único
+
+
+    for (fast in 1 until nums.size) {
+        if (nums[fast] != nums[slow]) {
+            slow++
+            nums[slow] = nums[fast]  // escreve só o valor diferente
+        }
+        // se igual, fast avança sozinho (skip)
+    }
+    return slow + 1  // tamanho do array sem duplicatas
+}
+// Complexidade: O(n) tempo, O(1) espaço
+
+
+
+
+PADRÃO 2 DE 5
+
+Sliding Window
+Uma janela (subarray contíguo) que desliza pelo array sem reprocessar elementos já visitados. Transforma O(n²) em O(n) para problemas de subarray.
+
+Quando reconhecer: máximo/mínimo/soma de subarray de tamanho k, subarray com condição (soma ≤ target, sem duplicatas). Sempre que a pergunta envolve 'subarrays contíguos'.
+
+A intuição central: em vez de recalcular a soma de cada janela do zero (O(n²)), você mantém o estado da janela e apenas subtrai o elemento que sai e adiciona o que entra — O(1) por passo.
+kotlin
+// Maximum Average Subarray of size k
+fun findMaxAverage(nums: IntArray, k: Int): Double {
+    // Janela fixa de tamanho k
+    var windowSum = nums.take(k).sum()  // soma da primeira janela
+    var maxSum = windowSum
+
+
+    for (i in k until nums.size) {
+        windowSum += nums[i] - nums[i - k]  // add direita, remove esquerda — O(1)!
+        maxSum = maxOf(maxSum, windowSum)
+    }
+    return maxSum.toDouble() / k
+}
+
+
+// Sliding Window variável — Longest Subarray with sum ≤ target
+fun maxLengthSubarray(nums: IntArray, target: Int): Int {
+    var left = 0
+    var windowSum = 0
+    var maxLen = 0
+
+
+    for (right in nums.indices) {
+        windowSum += nums[right]              // expande direita
+        while (windowSum > target) {          // contrai esquerda até satisfazer
+            windowSum -= nums[left]
+            left++
+        }
+        maxLen = maxOf(maxLen, right - left + 1)
+    }
+    return maxLen
+}
+// Complexidade: O(n) — cada elemento entra e sai da janela no máximo uma vez
+
+
+
+
+PADRÃO 3 DE 5
+
+Prefix Sum
+Pré-computação que transforma qualquer soma de subarray de O(n) para O(1). Uma das técnicas mais elegantes de arrays.
+
+A ideia: se você tem o array prefix onde prefix[i] = soma de arr[0..i-1], então a soma de qualquer subarray arr[i..j] é apenas prefix[j+1] - prefix[i].
+kotlin
+// prefix[i] = arr[0] + arr[1] + ... + arr[i-1]
+// soma(i, j) = prefix[j+1] - prefix[i]
+
+
+// Pré-processamento: O(n)
+fun buildPrefix(arr: IntArray): IntArray {
+    val prefix = IntArray(arr.size + 1)   // tamanho n+1, prefix[0] = 0
+    for (i in arr.indices) {
+        prefix[i + 1] = prefix[i] + arr[i]
+    }
+    return prefix
+}
+
+
+// Query: O(1) por consulta após O(n) de setup
+fun rangeSum(prefix: IntArray, i: Int, j: Int): Int {
+    return prefix[j + 1] - prefix[i]
+}
+
+
+// Problema: Subarray Sum Equals K — contar subarrays com soma k
+// Insight: soma(i,j) = k  ↔  prefix[j+1] - prefix[i] = k
+//                          ↔  prefix[i] = prefix[j+1] - k
+fun subarraySum(nums: IntArray, k: Int): Int {
+    val freq = mutableMapOf(0 to 1)  // prefixSum → quantas vezes apareceu
+    var sum = 0
+    var count = 0
+    for (num in nums) {
+        sum += num
+        count += freq.getOrDefault(sum - k, 0)  // quantos prefixes somam (sum-k)?
+        freq[sum] = freq.getOrDefault(sum, 0) + 1
+    }
+    return count
+}
+// Complexidade: O(n) tempo, O(n) espaço
+
+
+
+
+PADRÃO 4 DE 5
+
+Kadane's Algorithm — Maximum Subarray
+O algoritmo de Kadane é um dos mais elegantes da computação. Resolve o problema 'subarray de soma máxima' em O(n) com O(1) de espaço. Aparece em entrevistas com frequência altíssima.
+
+A pergunta fundamental: dado que estamos no elemento i, faz sentido continuar o subarray anterior ou começar um novo do zero? A resposta é matemática: se currentSum + nums[i] > nums[i], continuamos. Senão, começamos de novo.
+
+Simplificado: se a 'cauda' que vem arrastando tem soma negativa, ela só piora qualquer número que adicionarmos. Jogue fora e comece de nums[i].
+kotlin
+fun maxSubArray(nums: IntArray): Int {
+    var currentSum = nums[0]   // melhor soma terminando AQUI
+    var globalMax  = nums[0]   // melhor soma em qualquer lugar
+
+
+    for (i in 1 until nums.size) {
+        // Decisão local: estender ou recomeçar?
+        currentSum = maxOf(nums[i], currentSum + nums[i])
+        globalMax  = maxOf(globalMax, currentSum)
+    }
+    return globalMax
+}
+
+
+// Trace com [-2, 1, -3, 4, -1, 2, 1, -5, 4]:
+// i=1: current=max(1, -2+1)=1,    global=1
+// i=2: current=max(-3, 1-3)=-2,   global=1
+// i=3: current=max(4, -2+4)=4,    global=4
+// i=4: current=max(-1, 4-1)=3,    global=4
+// i=5: current=max(2, 3+2)=5,     global=5
+// i=6: current=max(1, 5+1)=6,     global=6  ← resposta: [4,-1,2,1]
+
+
+// Complexidade: O(n) tempo, O(1) espaço
+// Nota: Kadane é essencialmente um DP 1D onde o estado é 'melhor subarray até i'
+
+
+🧠  Extensões de Kadane que aparecem em FAANG
+1) Retornar os índices do subarray (não só a soma) — track start e end durante o algoritmo. 2) Maximum Product Subarray — precisa de duas variáveis (max e min atual) porque multiplicar por negativo inverte. 3) Circular Maximum Subarray — resposta é max(kadane normal, soma total - kadane do mínimo).
+
+
+PADRÃO 5 DE 5
+
+Index as Hash / Cyclic Sort
+Quando o array contém valores no range [1..n] ou [0..n-1], o índice pode ser usado como hash key — sem HashMap extra. Resolve problemas de duplicata/missing em O(n) tempo e O(1) espaço.
+
+A intuição: num array de n elementos com valores [1..n], o valor v pertence ao índice v-1. Se você mapear cada valor ao seu índice 'correto', os valores fora do lugar revelam anomalias.
+kotlin
+// Find All Duplicates — valores no range [1..n], sem HashMap
+// Técnica: use sinal negativo como flag 'já visitei este índice'
+fun findDuplicates(nums: IntArray): List<Int> {
+    val result = mutableListOf<Int>()
+
+
+    for (num in nums) {
+        val idx = Math.abs(num) - 1   // mapeia valor→índice (1-based → 0-based)
+        if (nums[idx] < 0) {
+            result.add(Math.abs(num)) // já marcamos este índice antes = duplicata
+        } else {
+            nums[idx] = -nums[idx]    // marca como visitado via negação
+        }
+    }
+    return result
+}
+
+
+// Find Missing Number — [0..n], um número ausente
+// Abordagem matemática: soma esperada - soma real
+fun missingNumber(nums: IntArray): Int {
+    val n = nums.size
+    val expectedSum = n * (n + 1) / 2  // fórmula de Gauss
+    return expectedSum - nums.sum()
+}
+// Complexidade: O(n) tempo, O(1) espaço para ambos
+
+
+
+
+Guia de Reconhecimento Rápido
+O mapa mental para identificar o padrão correto em 30 segundos
+Durante a entrevista, você tem 5 minutos para entender o problema e propor uma abordagem. Este mapa te leva ao padrão correto rapidamente.
+
+Se o problema pede...
+Padrão provável
+Sinal de alarme
+Par de elementos com soma/diferença alvo
+Two Pointers (sorted)
+Array já está sorted? Vai ser O(n) e não O(n²)
+Subarray de tamanho k (fixed window)
+Sliding Window (fixed)
+Tamanho k fixo = janela fixa
+Subarray com condição variável (max len, min len)
+Sliding Window (variable)
+Condição que muda conforme a janela cresce
+Soma de qualquer subarray [i,j] rápido
+Prefix Sum
+Múltiplas queries de soma de subarray
+Subarray de soma máxima/mínima
+Kadane's
+Pode ter negativos? Kadane resolve.
+Maior subarray sem repetição
+Sliding Window + HashSet
+String/chars + sem duplicatas
+Duplicatas / missing numbers [1..n]
+Index as Hash / XOR
+Valores no range do tamanho do array
+Remover/mover elementos in-place
+Two Pointers (slow/fast)
+In-place = sem espaço extra = dois ponteiros
+Array sorted + binary search hint
+Binary Search
+'Sorted' na pergunta quase sempre = log n possível
+Combinações de subarrays (contando)
+Prefix Sum + HashMap
+Subarray Sum Equals K é o arquétipo
+
+
+10 Problemas Es
