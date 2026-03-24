@@ -1,0 +1,536 @@
+VELOCODE · ALGORITHMS & DATA STRUCTURES
+Capítulo 3
+LINKED LISTS
+Singly · Doubly · Circular · Complexidade · 80/20 FAANG
+A estrutura que parece simples mas mata em entrevistas — porque os bugs são invisíveis.
+
+
+
+O que é uma Linked List de Verdade
+A diferença fundamental em relação ao array que explica toda a complexidade
+A Linked List é a resposta para a principal limitação do array: a contiguidade obrigatória. Para inserir no meio de um array, você precisa deslocar elementos. Para inserir no meio de uma linked list, você só reaponta ponteiros.
+
+O trade-off fundamental: você trocou localização previsível por flexibilidade. Cada nó pode estar em qualquer endereço de memória. O preço é que você perdeu acesso direto por índice — e junto com ele, a localidade de cache.
+
+A Estrutura de um Nó
+Um nó de linked list contém apenas duas coisas: o valor que ele armazena, e a referência para o próximo nó. Essa simplicidade é onde toda a elegância e todos os bugs nascem.
+kotlin
+// Definição de um nó — a unidade atômica de toda linked list
+class ListNode<T>(val value: T) {
+    var next: ListNode<T>? = null
+}
+
+
+// Para doubly linked list, adicionamos o ponteiro para o anterior
+class DoublyNode<T>(val value: T) {
+    var next: DoublyNode<T>? = null
+    var prev: DoublyNode<T>? = null
+}
+
+
+
+O que o null significa: o next de um nó ser null é o que define o fim da lista. É a sentinela. Toda operação em linked list que não checar null antes de derreferenciar vai crashar com NullPointerException — e esse é o bug mais comum em entrevistas.
+
+Por que Nós Ficam Espalhados na Memória
+Em um array, o OS reserva um bloco contíguo na hora da alocação. Em uma linked list, cada nó é alocado independentemente no heap, em momentos diferentes, em endereços diferentes.
+ARRAY — contíguo na memória:
+│ 0x1000 │ 0x1004 │ 0x1008 │ 0x100C │ 0x1010 │
+│   42   │   17   │    8   │   99   │   31   │
+│  [0]   │  [1]   │  [2]   │  [3]   │  [4]   │
+
+
+LINKED LIST — espalhado no heap:
+0x1000        0x3A80        0x0F14        0xC200
+┌────────┐    ┌────────┐    ┌────────┐    ┌────────┐
+│ val=42 │───▶│ val=17 │───▶│  val=8 │───▶│ val=99 │───▶ null
+│next=3A80│    │next=0F14│   │next=C200│   │next=null│
+└────────┘    └────────┘    └────────┘    └────────┘
+
+A consequência para performance: acessar arr[3] no array é uma operação aritmética. Chegar no nó de índice 3 na linked list exige percorrer os nós 0, 1 e 2, seguindo cada ponteiro — três desvios de memória, potencialmente três cache misses. Isso é O(n) e é lento na prática por causa de cache.
+💡  A inversão de forças arrays vs linked lists
+Arrays são rápidos para ler, lentos para escrever no meio. Linked lists são lentas para ler (traversal), rápidas para escrever — desde que você já esteja no nó certo. O 'desde que' é importante: o custo de chegar no nó correto ainda é O(n), então inserção no meio de uma linked list é O(n) total — mas por uma razão diferente do array.
+
+
+Os 3 Tipos de Linked List
+Cada variante existe para resolver uma limitação específica da anterior
+Singly Linked List
+Cada nó aponta só para o próximo. É o tipo mais simples e o mais comum em entrevistas. A lista expõe apenas o head — o tail só é acessível percorrendo tudo.
+head
+ │
+ ▼
+┌───────┐    ┌───────┐    ┌───────┐    ┌───────┐
+│  val  │───▶│  val  │───▶│  val  │───▶│  val  │───▶ null
+│  next │    │  next │    │  next │    │  next │     (tail)
+└───────┘    └───────┘    └───────┘    └───────┘
+  node 0       node 1       node 2       node 3
+
+Traversal: sempre para frente. Não tem como voltar.
+Acesso ao tail: O(n) — você percorre até encontrar o nó com next == null.
+Deleção de um nó arbitrário: você precisa do nó anterior para redirecionar o next. Por isso você sempre precisa do 'predecessor'.
+
+Doubly Linked List
+Cada nó aponta tanto para o próximo quanto para o anterior. Resolve o problema de não poder voltar, mas custa mais memória (um ponteiro extra por nó) e mais manutenção (toda operação precisa atualizar dois ponteiros).
+head                                             tail
+ │                                               │
+ ▼                                               ▼
+┌────────┐  ◀───  ┌────────┐  ◀───  ┌────────┐  ◀───  ┌────────┐
+│  val   │  ───▶  │  val   │  ───▶  │  val   │  ───▶  │  val   │
+│ prev=∅ │        │  prev  │        │  prev  │        │  next=∅│
+│  next  │        │  next  │        │  next  │        │  prev  │
+└────────┘        └────────┘        └────────┘        └────────┘
+
+Traversal em ambas as direções — O(n) para frente e para trás.
+Deleção de um nó: O(1) se você tem a referência direta — não precisa do predecessor porque você acessa via node.prev.
+
+
+
+Circular Linked List
+O último nó aponta de volta para o head (singly) ou o head.prev aponta para o tail (doubly). Não existe null no final — a lista é um ciclo.
+         ┌─────────────────────────────────┐
+         │                                 │
+         ▼                                 │
+┌───────┐    ┌───────┐    ┌───────┐    ┌──┴────┐
+│  val  │───▶│  val  │───▶│  val  │───▶│  val  │
+└───────┘    └───────┘    └───────┘    └───────┘
+  head                                   tail
+
+Útil para sistemas que precisam ciclicamente passar por todos os elementos: round-robin scheduling, jogo de cartas (turnos), buffer circular.
+
+
+
+
+
+Big O de Linked Lists: A Tabela Completa com o Porquê
+Cada complexidade tem uma razão estrutural — não apenas um número para decorar
+Operação
+Singly
+Doubly
+Porquê
+ACESSO
+Acesso ao head
+O(1)
+O(1)
+A lista guarda referência direta ao head. Sem percurso.
+Acesso ao tail
+O(n)
+O(1)*
+Singly: percorre do head até next==null. Doubly: referência ao tail (*se mantida). Implementações básicas sem tail pointer: O(n).
+Acesso por índice i
+O(n)
+O(n/2)*
+Sem fórmula de endereço. Deve seguir ponteiros um a um. O(n) equivalente para ambos — O(n/2) é apenas constante.
+Busca por valor
+O(n)
+O(n)
+Lista não ordenada: sem atalho. Pior caso percorre todos os n nós.
+INSERÇÃO
+Insert no head (prepend)
+O(1)
+O(1)
+Novo nó aponta para head atual, head update para novo nó. Só reaponta ponteiro.
+Insert no tail (append)
+O(n)
+O(1)*
+Singly sem tail pointer: percorre até o fim para encontrar o último nó. Doubly com tail: acesso direto.
+Insert no meio (dado predecessor)
+O(1)
+O(1)
+Se você já tem o nó predecessor: novo.next = pred.next; pred.next = novo. Apenas reaponta ponteiros. O custo de CHEGAR lá é O(n).
+REMOÇÃO
+Remove head
+O(1)
+O(1)
+head = head.next. O head anterior é desconectado. GC descarta se não há mais referências.
+Remove tail
+O(n)
+O(1)*
+Singly: para remover o tail, você precisa do penúltimo nó (predecessor). Única forma: percorrer até current.next.next == null.
+Remove nó arbitrário (dado o nó)
+O(n)
+O(1)
+Singly: para remover node, precisa do predecessor (não tem prev). Doubly: node.prev.next = node.next diretamente — O(1).
+
+
+🔑  O princípio unificador da complexidade
+Toda operação de linked list é composta de duas partes separadas: (1) ENCONTRAR o nó — O(n) quase sempre, porque não tem acesso por índice. (2) EXECUTAR a operação — O(1) quase sempre, porque é só redirecionar ponteiros. Quando o entrevistador falar 'O(n) para acessar + O(1)', esse é o modelo mental correto. O O(1) final só vale se você já está no nó certo.
+
+
+Operações Fundamentais: Como Implementar Sem Bugs
+As operações que você vai codificar em entrevista — com os edge cases que reprovam
+Linked list é a estrutura que mais produz bugs silenciosos em entrevistas. A maioria não é de lógica — é de ordem de operações. Alterar um ponteiro na ordem errada destrói a referência que você precisa no passo seguinte.
+
+Insert no Head — A Ordem Importa
+Antes:  head ──▶ [B] ──▶ [C] ──▶ null
+
+
+Inserir [A] como novo head:
+Passo 1: newNode.next = head    ──▶  [A] ──▶ [B] ──▶ [C]  (head ainda aponta para B)
+Passo 2: head = newNode         ──▶  head aponta para [A]  ✓
+
+
+ERRADO — ordem invertida:
+Passo 1: head = newNode         ──▶  head aponta para [A], MAS A.next é null
+Passo 2: newNode.next = head    ──▶  A.next = A  (CICLO! Você perdeu B e C)
+kotlin
+fun insertAtHead(value: Int): ListNode {
+    val newNode = ListNode(value)
+    newNode.next = head   // 1° — salva a chain antes de sobrescrever head
+    head = newNode        // 2° — só agora atualiza o head
+    size++
+    return newNode
+}
+
+
+
+
+Delete do Head
+kotlin
+fun deleteHead(): Int? {
+    if (head == null) return null   // edge case: lista vazia
+    val value = head!!.value
+    head = head!!.next              // avança o head — GC descarta o antigo
+    size--
+    return value
+}
+// Se havia apenas 1 nó: head.next era null, head vira null. Correto.
+
+
+
+
+Delete de um Nó Arbitrário (Singly)
+Esta é a operação que mais confunde. Para deletar o nó N em uma singly linked list, você precisa do nó ANTERIOR a N — porque você vai redirecionar o next do anterior para pular N.
+Deletar o nó [C] da lista [A] ──▶ [B] ──▶ [C] ──▶ [D]
+
+
+Você precisa de [B] (predecessor de [C])
+Operação: B.next = C.next  ──▶  [A] ──▶ [B] ──▶ [D]  (C é desconectado)
+
+
+O problema: se você só tem a referência para [C], precisa percorrer do head
+até encontrar o nó cujo next == C  ──▶  O(n)
+kotlin
+// Deletar por referência ao nó (singly) — requer traversal O(n)
+fun deleteNode(target: ListNode) {
+    // Edge case: deletar o head
+    if (head == target) {
+        head = head!!.next
+        return
+    }
+    // Percorre buscando o predecessor
+    var current = head
+    while (current?.next != null) {
+        if (current.next == target) {
+            current.next = target.next  // pula o target
+            return
+        }
+        current = current.next
+    }
+}
+
+
+// HACK da entrevista: se você tem APENAS o nó a deletar (sem acesso ao head),
+// e ele NÃO é o tail, você pode copiar o valor do próximo e deletar o próximo:
+fun deleteNodeHack(node: ListNode) {
+    // node.next garantidamente não é null (nó não é tail)
+    node.value = node.next!!.value   // copia o valor do próximo
+    node.next = node.next!!.next     // pula o próximo
+}
+// Isso 'simula' a deleção de node copiando o próximo para cima
+
+
+⚠️  O hack de deleção sem predecessor
+O truque de copiar o valor do próximo e deletar o próximo nó é pergunta frequente em FAANG. Funciona para qualquer nó que não seja o tail. Para o tail, você genuinamente precisa do predecessor — não tem atalho. Sempre verbalize essa limitação para o entrevistador.
+
+
+Os Padrões 80/20 para FAANG
+4 padrões que cobrem ~90% dos problemas de linked list em entrevistas
+PADRÃO 1 DE 4
+
+Fast & Slow Pointers (Floyd's Algorithm)
+Dois ponteiros percorrem a lista em velocidades diferentes: slow avança 1 nó por vez, fast avança 2. Essa assimetria cria dois tipos de detecção: ciclos e ponto médio.
+
+Por que funciona para ciclos: se existe um ciclo, fast vai inevitavelmente 'alcançar' slow dentro do ciclo — como dois corredores numa pista circular onde um corre mais rápido. Se não existe ciclo, fast vai chegar em null.
+
+Por que funciona para o meio: quando fast chega ao fim (null ou último nó), slow percorreu exatamente metade da distância — porque fast está sempre 2× à frente.
+kotlin
+// 1. Detectar ciclo — Linked List Cycle
+fun hasCycle(head: ListNode?): Boolean {
+    var slow = head
+    var fast = head
+    while (fast != null && fast.next != null) {
+        slow = slow!!.next         // avança 1
+        fast = fast.next!!.next    // avança 2
+        if (slow == fast) return true  // colisão = ciclo
+    }
+    return false  // fast chegou em null = sem ciclo
+}
+
+
+// 2. Encontrar início do ciclo — Linked List Cycle II
+// Propriedade matemática: quando slow e fast colidem, coloque um ponteiro
+// no head. Avance ambos 1 por vez. Onde se encontrarem = início do ciclo.
+fun detectCycle(head: ListNode?): ListNode? {
+    var slow = head; var fast = head
+    while (fast != null && fast.next != null) {
+        slow = slow!!.next
+        fast = fast.next!!.next
+        if (slow == fast) {
+            var entry = head        // reset um ponteiro para o head
+            while (entry != slow) { // avança ambos 1 por vez
+                entry = entry!!.next
+                slow = slow!!.next
+            }
+            return entry  // ponto de encontro = início do ciclo
+        }
+    }
+    return null
+}
+
+
+// 3. Encontrar o nó do meio
+fun middleNode(head: ListNode?): ListNode? {
+    var slow = head; var fast = head
+    while (fast?.next != null) {
+        slow = slow!!.next
+        fast = fast.next!!.next
+    }
+    return slow  // quando fast termina, slow está no meio
+}
+// Lista par [1,2,3,4]: retorna nó 3 (segundo meio — convenção)
+// Lista ímpar [1,2,3,4,5]: retorna nó 3 (meio exato)
+
+
+
+
+PADRÃO 2 DE 4
+
+Reversão de Linked List
+Reverter uma linked list in-place é O(n) tempo e O(1) espaço — você redireciona cada ponteiro na direção oposta enquanto percorre a lista. Aparece diretamente ou como subproblema de problemas mais complexos.
+
+O template de 3 variáveis: você precisa de 3 ponteiros simultâneos porque para redirecionar current.next, você precisa ter salvo o próximo nó (que será perdido) e saber de onde veio (para onde o next vai apontar).
+Antes:  null ◀── [1] ──▶ [2] ──▶ [3] ──▶ [4] ──▶ null
+
+
+Passo 1: prev=null, curr=[1], next=[2]
+         curr.next = prev  ──▶  [1]──▶null    [2]──▶[3]──▶[4]
+
+
+Passo 2: prev=[1],  curr=[2], next=[3]
+         curr.next = prev  ──▶  [2]──▶[1]──▶null    [3]──▶[4]
+
+
+Passo 3: prev=[2],  curr=[3], next=[4]
+         curr.next = prev  ──▶  [3]──▶[2]──▶[1]──▶null    [4]
+
+
+Passo 4: prev=[3],  curr=[4], next=null
+         curr.next = prev  ──▶  [4]──▶[3]──▶[2]──▶[1]──▶null
+
+
+Depois: [4]──▶[3]──▶[2]──▶[1]──▶null   (prev agora é o novo head)
+kotlin
+// Reverter lista completa — iterativo O(n) / O(1)
+fun reverseList(head: ListNode?): ListNode? {
+    var prev: ListNode? = null
+    var curr = head
+    while (curr != null) {
+        val next = curr.next   // salva o próximo ANTES de redirecionar
+        curr.next = prev       // inverte o ponteiro
+        prev = curr            // avança prev
+        curr = next            // avança curr para o next salvo
+    }
+    return prev  // prev é o novo head quando curr == null
+}
+
+
+// Reverter subseção [left, right] — Reverse Linked List II
+fun reverseBetween(head: ListNode?, left: Int, right: Int): ListNode? {
+    val dummy = ListNode(0).apply { next = head }
+    var pre = dummy as ListNode?
+
+
+    // Chega no nó anterior à posição left
+    repeat(left - 1) { pre = pre?.next }
+
+
+    var curr = pre?.next
+    repeat(right - left) {
+        val next = curr?.next
+        curr?.next = next?.next
+        next?.next = pre?.next
+        pre?.next = next
+    }
+    return dummy.next
+}
+// O dummy node é um truque que elimina o edge case de head ser null
+// ou left = 1 (reversão começa no head)
+
+
+
+
+PADRÃO 3 DE 4
+
+Merge e Two Pointers em Duas Listas
+Problemas que envolvem duas listas simultaneamente — merge de listas ordenadas, encontrar intersecção, comparar estruturas. O padrão usa dois ponteiros, um em cada lista, que avançam com base em uma lógica de comparação.
+kotlin
+// Merge Two Sorted Lists — O(n+m) / O(1)
+fun mergeTwoLists(l1: ListNode?, l2: ListNode?): ListNode? {
+    // Dummy node elimina edge cases de lista vazia e primeiro nó
+    val dummy = ListNode(0)
+    var curr: ListNode? = dummy
+    var a = l1; var b = l2
+
+
+    while (a != null && b != null) {
+        if (a.value <= b.value) {
+            curr?.next = a
+            a = a.next
+        } else {
+            curr?.next = b
+            b = b.next
+        }
+        curr = curr?.next
+    }
+    curr?.next = a ?: b  // anexa o restante (uma das listas pode ter sobra)
+    return dummy.next
+}
+
+
+// Intersection of Two Linked Lists — O(n+m) / O(1)
+// Insight: se os dois ponteiros percorrem as duas listas (A depois B, B depois A),
+// eles percorrem exatamente a mesma distância total e se encontram na interseção.
+fun getIntersectionNode(headA: ListNode?, headB: ListNode?): ListNode? {
+    var a = headA; var b = headB
+    while (a != b) {
+        a = if (a == null) headB else a.next   // quando termina A, começa B
+        b = if (b == null) headA else b.next   // quando termina B, começa A
+    }
+    return a  // null se não há interseção (ambos chegam em null juntos)
+}
+
+
+🧠  Por que o truque de interseção funciona
+Seja lenA e lenB o comprimento das listas. O ponteiro A percorre lenA + lenB. O ponteiro B percorre lenB + lenA. Ambos percorrem a mesma distância total. Se existe interseção no ponto c, as distâncias até c a partir de A e B são diferentes, mas após o 'swap' elas se equalizam. Se não existe interseção, ambos chegam em null simultaneamente.
+
+
+PADRÃO 4 DE 4
+
+Dummy Node e Recursão
+Dummy node: um nó sentinela com valor arbitrário que você coloca antes do head real. Elimina edge cases onde o head muda ou a lista começa vazia — seu código trata todos os nós uniformemente sem condicionais especiais.
+
+Recursão em linked list: a pilha de chamadas substitui o ponteiro explícito. Em cada nível, você processa o nó atual e delega o resto. O retorno da recursão 'constrói' o resultado da cauda para a cabeça.
+kotlin
+// Remove Nth Node From End — Dummy node + two pointers com gap n
+fun removeNthFromEnd(head: ListNode?, n: Int): ListNode? {
+    val dummy = ListNode(0).apply { next = head }
+    var fast: ListNode? = dummy
+    var slow: ListNode? = dummy
+
+
+    // Avança fast n+1 passos para criar gap de n entre fast e slow
+    repeat(n + 1) { fast = fast?.next }
+
+
+    // Move ambos até fast chegar em null
+    while (fast != null) {
+        slow = slow?.next
+        fast = fast?.next
+    }
+    // slow está no predecessor do nó a deletar
+    slow?.next = slow?.next?.next
+    return dummy.next
+}
+
+
+// Reorder List — combina meio + reversão + merge
+// [1,2,3,4,5] → [1,5,2,4,3]
+fun reorderList(head: ListNode?) {
+    if (head?.next == null) return
+
+
+    // 1. Encontra o meio
+    var slow = head; var fast = head
+    while (fast?.next != null) {
+        slow = slow?.next; fast = fast.next?.next
+    }
+
+
+    // 2. Reverte a segunda metade
+    var prev: ListNode? = null; var curr = slow?.next
+    slow?.next = null  // desconecta as duas metades
+    while (curr != null) {
+        val next = curr.next; curr.next = prev; prev = curr; curr = next
+    }
+
+
+    // 3. Intercala as duas metades
+    var first = head; var second = prev
+    while (second != null) {
+        val tmp1 = first?.next; val tmp2 = second.next
+        first?.next = second; second.next = tmp1
+        first = tmp1; second = tmp2
+    }
+}
+// Reorder List é o problema que combina os 3 padrões anteriores:
+// Fast/Slow (meio) + Reversão + Merge. Clássico de FAANG.
+
+
+
+
+Arrays vs Linked Lists: O Confronto Definitivo
+A pergunta que o entrevistador vai fazer — e a resposta que demonstra profundidade
+Critério
+Array
+Linked List
+Acesso por índice
+O(1) — aritmética de endereço
+O(n) — percorre seguindo ponteiros
+Insert / Delete head
+O(n) — shift de todos os elementos
+O(1) — só reaponta ponteiros
+Insert / Delete tail
+O(1) amort. (dynamic) / O(n) se resize
+O(n) singly / O(1) doubly com tail ptr
+Insert / Delete meio
+O(n) — shift obrigatório
+O(n) chegando + O(1) executando
+Busca linear
+O(n) — cache-friendly, rápido na prática
+O(n) — cache-hostile, lento na prática
+Memória por elemento
+Só o dado
+Dado + 1 ponteiro (singly) ou 2 (doubly)
+Memória contígua
+Sim — cache locality
+Não — cada nó alocado separadamente
+Resize
+Reallocation O(n) amortizado
+Não existe — cresce naturalmente
+Implementação
+Simples
+Gerenciamento de ponteiros: bugs
+
+
+Quando escolher Linked List sobre Array: quando inserções e deleções frequentes no head ou em posição conhecida são prioritárias, e acesso aleatório por índice é raro ou desnecessário. Exemplos: implementar stack/queue com operações O(1), LRU cache (doubly + hashmap), histórico de navegação.
+
+10 Problemas Essenciais com Mapa de Resolução
+#
+Problema
+Nível
+Padrão
+Insight-chave
+1
+Reverse Linked List
+Easy
+Reversão iterativa
+3 ponteiros: prev, curr, next. Salva next ANTES de redirecionar.
+2
+Merge Two Sorted Lists
+Easy
+Merge + Dummy node
+Dummy elimina edge case do primeiro nó. Não esqueça do restante.
+3
+Linked List Cycle
+Easy
+Fast/Slow pointers
+Colisão = ciclo. fast.next != null && fast.nex
