@@ -1,7 +1,3 @@
-Aqui está seu conteúdo estruturado em **Markdown limpo, consistente e pronto para repositório (README.md / docs)**:
-
----
-
 # VELOCODE · ALGORITHMS & DATA STRUCTURES
 
 ## Capítulo 2 — ARRAYS
