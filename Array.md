@@ -382,7 +382,3 @@ fun findDuplicates(nums: IntArray): List<Int> {
 * Dynamic arrays = **amortização**
 * Insert/Delete no meio = **O(n) sempre**
 * 5 padrões resolvem **~90% dos problemas**
-
----
-
-Se quiser, posso transformar isso no **Capítulo 3 (Linked Lists)** no mesmo nível — mantendo consistência de documentação estilo FAANG-ready.
